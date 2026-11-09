@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<widget xmlns="http://www.w3.org/ns/widgets"
+        xmlns:tizen="http://tizen.org/ns/widgets"
+        id="http://dumbtv.local/nts"
+        version="1.0.19"
+        viewmodes="maximized">
+  <tizen:application id="ntsrad0001.NTSRadio"
+                     package="ntsrad0001"
+                     required_version="5.0"/>
+  <content src="index.html"/>
+  <icon src="icon.png"/>
+  <name>Dumb TV</name>
+  <description>Minimal TV launcher with radio, scenery and app shelf</description>
+  <author href="http://dumbtv.local" email="dumbtv@localhost">dumbtv</author>
+  <tizen:privilege name="http://tizen.org/privilege/internet"/>
+  <tizen:privilege name="http://tizen.org/privilege/tv.audio"/>
+  <tizen:privilege name="http://developer.samsung.com/privilege/avplay"/>
+  <access origin="*" subdomains="true"/>
+  <tizen:profile name="tv-samsung"/>
+  <tizen:setting screen-orientation="landscape"
+                 context-menu="disable"
+                 background-support="disable"
+                 encryption="disable"
+                 install-location="auto"
+                 hwkey-event="enable"/>
+  <feature name="http://tizen.org/feature/network.internet"/>
+</widget>

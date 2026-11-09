@@ -1,0 +1,2182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Dumb TV</title>
+<script src="$WEBAPIS/webapis/webapis.js"></script>
+<style>
+  :root {
+    --bg-base: #050608;
+    --chassis: rgba(14, 16, 22, 0.88);
+    --chassis-border: rgba(255, 255, 255, 0.14);
+    --metal: rgba(22, 25, 34, 0.75);
+    --metal-active: rgba(32, 38, 52, 0.95);
+    --accent: #ffffff;
+    --dim: #9aa1b2;
+    --led-red: #ff3b30;
+    --led-green: #34c759;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: var(--bg-base);
+    color: var(--accent);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Samsung One", "Helvetica Neue", sans-serif;
+  }
+
+  /* Layer 1: True Native 4K Photographic Scenery */
+  #scenery-fallback {
+    position: absolute;
+    top: -5%;
+    left: -5%;
+    width: 110%;
+    height: 110%;
+    background-image: url('lake-dark.jpg');
+    background-size: cover;
+    background-position: center;
+    z-index: 1;
+    transition: background-image 1.2s ease-in-out;
+    animation: kenBurns 45s infinite alternate ease-in-out;
+    opacity: 0.85;
+  }
+
+  @keyframes kenBurns {
+    0% { transform: scale(1) translate(0, 0); }
+    100% { transform: scale(1.08) translate(-1.5%, -1%); }
+  }
+
+  /* Layer 2: Apple TV Aerial Video Stream */
+  #aerial-video {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    min-width: 100%;
+    min-height: 100%;
+    width: auto;
+    height: auto;
+    transform: translate(-50%, -50%);
+    z-index: 2;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 1.5s ease;
+  }
+
+  #aerial-video.visible {
+    opacity: 1;
+  }
+
+  /* Layer 3: Ambient Show Cover Art Glow */
+  #ambient-art {
+    position: absolute;
+    top: -10%;
+    left: -10%;
+    width: 120%;
+    height: 120%;
+    background-size: cover;
+    background-position: center;
+    filter: blur(80px) saturate(1.4);
+    opacity: 0;
+    z-index: 3;
+    transition: background-image 1.2s ease, opacity 1.2s ease;
+    mix-blend-mode: screen;
+    pointer-events: none;
+  }
+
+  /* Layer 4: Vignette */
+  .vignette {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 4;
+    background: radial-gradient(circle at center, rgba(0,0,0,0.05) 30%, rgba(0,0,0,0.5) 75%, rgba(0,0,0,0.88) 100%),
+                linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, transparent 20%, transparent 75%, rgba(0,0,0,0.85) 100%);
+    pointer-events: none;
+  }
+
+  /* 10-Foot UI Scaled Viewport Layout */
+  .viewport {
+    position: relative;
+    z-index: 5;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 56px 96px;
+  }
+
+  /* Screensaver Mode: Hides Chassis & Shelf Completely */
+  .viewport.zen .center-unit,
+  .viewport.zen .shelf-container {
+    opacity: 0 !important;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 2s ease, visibility 0s linear 2s;
+  }
+
+  .viewport.zen .header-controls {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 2s ease, visibility 0s linear 2s;
+  }
+
+  .viewport.zen .header {
+    opacity: 1;
+  }
+
+  /* Header: 10-Foot Scaled Clock, Weather, Controls */
+  .header {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    transition: opacity 0.6s ease;
+  }
+
+  .time-block {
+    display: flex;
+    align-items: baseline;
+    gap: 24px;
+  }
+
+  .clock {
+    font-size: 104px;
+    font-weight: 300;
+    letter-spacing: -3px;
+    line-height: 1;
+    text-shadow: 0 4px 28px rgba(0,0,0,0.9);
+  }
+
+  .date-weather {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .date {
+    font-size: 26px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.95);
+    letter-spacing: 0.5px;
+    text-shadow: 0 2px 12px rgba(0,0,0,0.85);
+  }
+
+  .weather {
+    font-size: 22px;
+    color: rgba(255, 255, 255, 0.8);
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.85);
+  }
+
+  .header-controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .nav-btn {
+    background: rgba(18, 20, 28, 0.8);
+    border: 1.5px solid rgba(255, 255, 255, 0.18);
+    padding: 14px 28px;
+    border-radius: 100px;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 20px;
+    font-weight: 500;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    transition: all 0.1s ease;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .nav-btn.focused {
+    background: rgba(50, 60, 80, 0.98);
+    border-color: #ffffff;
+    color: #ffffff;
+    transform: scale(1.06);
+    box-shadow: 0 0 28px rgba(255,255,255,0.25);
+  }
+
+  /* Hardware Player Chassis */
+  .center-unit {
+    width: 100%;
+    max-width: 1640px;
+    margin: 0 auto;
+    transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .chassis {
+    background: var(--chassis);
+    border: 1px solid var(--chassis-border);
+    border-radius: 36px;
+    padding: 40px 60px;
+    box-shadow: 0 40px 100px rgba(0,0,0,0.88), inset 0 1px 0 rgba(255,255,255,0.1);
+    backdrop-filter: blur(28px);
+    -webkit-backdrop-filter: blur(28px);
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+
+  /* Chassis Top Bar with NTS Logo */
+
+
+
+
+
+  /* Chassis Controls Grid */
+  .chassis-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.35fr;
+    gap: 48px;
+    align-items: center;
+  }
+
+  /* Two Live Buttons (NTS 1 & 2) with Artwork Thumbnail */
+  .button-group {
+    display: flex;
+    gap: 20px;
+  }
+
+  .live-btn {
+    flex: 1;
+    background: var(--metal);
+    border: 2px solid var(--chassis-border);
+    border-radius: 26px;
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 280px;
+    transition: all 0.1s ease;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .live-btn.focused {
+    border-color: #ffffff;
+    transform: scale(1.04);
+    box-shadow: 0 0 30px rgba(255,255,255,0.18);
+  }
+
+  .live-btn.active {
+    background: var(--metal-active);
+    border-color: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 16px 36px rgba(0,0,0,0.6);
+  }
+
+  .live-btn .top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 2;
+  }
+
+  .led {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #2b2e36;
+    transition: all 0.3s ease;
+  }
+
+  .live-btn.active.playing .led {
+    background: var(--led-red);
+    box-shadow: 0 0 16px var(--led-red);
+  }
+
+  .live-btn .label {
+    font-size: 20px;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--dim);
+    font-weight: 600;
+  }
+
+  .live-btn.active .label {
+    color: var(--accent);
+  }
+
+  .live-btn .num {
+    font-size: 104px;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: -2px;
+    z-index: 2;
+  }
+
+  .channel-art-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center;
+    opacity: 0.18;
+    z-index: 1;
+    transition: opacity 0.5s ease;
+  }
+
+  .live-btn.active .channel-art-bg {
+    opacity: 0.35;
+  }
+
+  /* Rotary Unit with Cover Art & Dial */
+  .rotary-unit {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    background: var(--metal);
+    border: 2px solid var(--chassis-border);
+    border-radius: 26px;
+    padding: 26px 32px;
+    height: 280px;
+  }
+
+  .rotary-step-btn {
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    background: rgba(14, 16, 22, 0.85);
+    border: 1.5px solid var(--chassis-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 30px;
+    color: var(--dim);
+    transition: all 0.1s ease;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .rotary-step-btn.focused {
+    border-color: #ffffff;
+    color: #fff;
+    transform: scale(1.15);
+    box-shadow: 0 0 20px rgba(255,255,255,0.25);
+  }
+
+  .mixtape-poster {
+    width: 210px;
+    height: 210px;
+    border-radius: 18px;
+    background-size: cover;
+    background-position: center;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 10px 28px rgba(0,0,0,0.7);
+    flex-shrink: 0;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .mixtape-poster.focused {
+    border-color: #fff;
+    transform: scale(1.05);
+    box-shadow: 0 14px 36px rgba(0,0,0,0.85), 0 0 28px rgba(255,255,255,0.25);
+  }
+
+  .mixtape-poster-overlay {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #2b2e36;
+    transition: all 0.3s ease;
+  }
+
+  .mixtape-poster.active.playing .mixtape-poster-overlay {
+    background: var(--led-green);
+    box-shadow: 0 0 14px var(--led-green);
+  }
+
+  .rotary-info {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .rotary-pos-tag {
+    font-size: 20px;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--dim);
+    font-weight: 600;
+  }
+
+  .rotary-title {
+    font-size: 42px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+  }
+
+  .rotary-desc {
+    font-size: 20px;
+    color: var(--dim);
+    line-height: 1.45;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Live Broadcast Show Description Banner */
+  .broadcast-desc-bar {
+    background: rgba(22, 25, 34, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 18px;
+    padding: 22px 30px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+
+  .live-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--led-red);
+    box-shadow: 0 0 12px var(--led-red);
+    flex-shrink: 0;
+  }
+
+  .broadcast-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    overflow: hidden;
+  }
+
+  .broadcast-title {
+    font-size: 24px;
+    font-weight: 600;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .broadcast-summary {
+    font-size: 20px;
+    color: var(--dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* 10-Foot Scaled App Shelf */
+  .shelf-container {
+    width: 100%;
+    max-width: 1640px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+
+  .app-shelf {
+    display: flex;
+    gap: 20px;
+  }
+
+  .app-tile {
+    flex: 1;
+    background: rgba(16, 18, 24, 0.82);
+    border: 2px solid var(--chassis-border);
+    border-radius: 22px;
+    padding: 22px 30px;
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    transition: all 0.1s ease;
+    cursor: pointer;
+    height: 116px;
+  }
+
+  .app-tile.focused {
+    background: rgba(38, 45, 60, 0.98);
+    border-color: #ffffff;
+    transform: translateY(-4px) scale(1.04);
+    box-shadow: 0 18px 40px rgba(0,0,0,0.75), 0 0 35px rgba(255,255,255,0.15);
+  }
+
+  .app-svg-icon {
+    width: 46px;
+    height: 46px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .app-meta h3 {
+    font-size: 25px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+
+  .app-meta span {
+    font-size: 20px;
+    color: var(--dim);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  /* Consistent 10-Foot Scaled Footer */
+  .footer {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 20px;
+    color: rgba(255, 255, 255, 0.7);
+    letter-spacing: 1.5px;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.9);
+    transition: color 0.5s ease;
+  }
+
+  .footer-status {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 60%;
+  }
+
+  .footer-status .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--led-red);
+    box-shadow: 0 0 10px var(--led-red);
+  }
+
+  .footer-hints {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 500;
+  }
+
+  /* Modal: Shelf Customizer */
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.88);
+    backdrop-filter: blur(28px);
+    -webkit-backdrop-filter: blur(28px);
+    z-index: 10;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-overlay.open {
+    display: flex;
+  }
+
+  .modal-card {
+    background: #11131a;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 36px;
+    padding: 44px 54px;
+    width: 1240px;
+    max-height: 85vh;
+    box-shadow: 0 40px 100px rgba(0,0,0,0.95);
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+
+  .modal-header h2 {
+    font-size: 40px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+  }
+
+  .modal-header p {
+    font-size: 21px;
+    color: var(--dim);
+    margin-top: 6px;
+  }
+
+  .modal-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    max-height: 48vh;
+    overflow-y: auto;
+    padding-right: 8px;
+  }
+
+  .modal-app-item {
+    background: rgba(24, 27, 36, 0.85);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 16px 22px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: all 0.1s ease;
+    cursor: pointer;
+  }
+
+  .modal-app-item.focused {
+    border-color: #fff;
+    background: rgba(45, 52, 68, 0.98);
+    transform: scale(1.02);
+  }
+
+  .modal-app-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .modal-toggle-badge {
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    padding: 5px 12px;
+    border-radius: 100px;
+    background: #252834;
+    color: var(--dim);
+  }
+
+  .modal-toggle-badge.active {
+    background: var(--led-green);
+    color: #000;
+    box-shadow: 0 0 12px rgba(52,199,89,0.5);
+  }
+
+  .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 20px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .modal-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1.5px solid rgba(255, 255, 255, 0.2);
+    padding: 16px 36px;
+    border-radius: 100px;
+    color: #fff;
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.1s ease;
+  }
+
+  .modal-btn.focused {
+    background: #fff;
+    color: #000;
+    transform: scale(1.04);
+  }
+
+  .app-svg-icon svg { width: 100%; height: 100%; }
+
+  /* Corner mini player (screensaver mode) */
+  .mini-player {
+    position: absolute;
+    left: 96px;
+    bottom: 56px;
+    display: flex;
+    opacity: 0;
+    visibility: hidden;
+    align-items: center;
+    gap: 24px;
+    padding: 18px 28px 18px 18px;
+    background: rgba(14, 16, 22, 0.78);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 28px;
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    max-width: 760px;
+  }
+  .viewport.zen .mini-player { opacity: 1; visibility: visible; }
+  .viewport.zen .footer-status { visibility: hidden; }
+  .mini-art {
+    width: 112px; height: 112px; border-radius: 18px;
+    background-size: cover; background-position: center;
+    background-color: #1b1e27; flex-shrink: 0;
+  }
+  .mini-text { display: flex; flex-direction: column; gap: 6px; overflow: hidden; }
+  .mini-kind {
+    font-size: 20px; letter-spacing: 3px; text-transform: uppercase;
+    color: var(--dim); display: flex; align-items: center; gap: 10px; font-weight: 600;
+  }
+  .mini-title { font-size: 28px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mini-sub { font-size: 20px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .nav-btn.focused, .live-btn.focused, .app-tile.focused, .rotary-step-btn.focused, .mixtape-poster.focused {
+    outline: 3px solid rgba(255,255,255,0.95);
+    outline-offset: 3px;
+    box-shadow: 0 0 36px rgba(255,255,255,0.22);
+  }
+  .mini-player { transition: left 2s ease, right 2s ease, top 2s ease, bottom 2s ease, opacity 2s ease 1s, visibility 0s; }
+  .mini-player.pos1 { left: auto; right: 96px; }
+  .mini-player.pos2 { bottom: auto; top: 200px; }
+  .mini-player.pos3 { left: auto; right: 96px; bottom: auto; top: 200px; }
+  .broadcast-next { font-size: 20px; color: rgba(255,255,255,0.55); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .forecast { display: none; font-size: 30px; color: rgba(255,255,255,0.92); letter-spacing: 1px; text-shadow: 0 2px 12px rgba(0,0,0,0.85); }
+  .viewport.zen .forecast { display: block; }
+  body.dim .viewport { filter: brightness(0.6); }
+  body.dim #scenery-fallback, body.dim #aerial-video { filter: brightness(0.6); }
+
+  @keyframes bootfade { from { opacity: 0; } to { opacity: 1; } }
+  body { animation: bootfade 3s ease-out; }
+  .info-panel { position: fixed; left: 0; top: 0; width: 100%; height: 100%; z-index: 12; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.82); }
+  .info-panel.open { display: flex; }
+  .info-card { width: 1300px; background: #11131a; border: 2px solid rgba(255,255,255,0.2); border-radius: 36px; padding: 50px 60px; display: flex; gap: 48px; }
+  .info-art { width: 380px; height: 380px; border-radius: 24px; background-size: cover; background-position: center; flex-shrink: 0; }
+  .info-body { display: flex; flex-direction: column; gap: 16px; overflow: hidden; }
+  .info-kind { font-size: 20px; letter-spacing: 3px; text-transform: uppercase; color: var(--dim); }
+  .info-title { font-size: 48px; font-weight: 600; line-height: 1.1; }
+  .info-meta { font-size: 22px; color: rgba(255,255,255,0.7); }
+  .info-desc { font-size: 24px; line-height: 1.5; color: rgba(255,255,255,0.85); max-height: 330px; overflow: hidden; }
+  .info-hint { font-size: 20px; color: var(--dim); margin-top: auto; }
+
+  .viewport .clock, .viewport .date { transition: font-size 2s ease; }
+  .viewport.zen .clock { font-size: 190px; }
+  .viewport.zen .date { font-size: 38px; }
+  .viewport.zen .weather { font-size: 28px; }
+  .clock .ampm { font-size: 0.32em; margin-left: 10px; letter-spacing: 0; }
+  .offline-badge { display: none; font-size: 20px; color: #ffb340; letter-spacing: 2px; text-transform: uppercase; }
+  .offline-badge.show { display: block; }
+  .broadcast-summary { display: none; }
+  .nav-btn { white-space: nowrap; padding: 14px 24px; }
+  #btn-aerial { max-width: 560px; overflow: hidden; text-overflow: ellipsis; }
+  .header-controls { gap: 14px; flex-shrink: 0; }
+  .date, .weather, .forecast { white-space: nowrap; }
+  .mini-kind { white-space: nowrap; }
+
+  .rotary-unit { flex-direction: column; justify-content: center; gap: 16px; height: 300px; padding: 20px 28px; }
+  .live-btn { height: 300px; }
+  .rotary-stage { display: flex; align-items: center; justify-content: center; gap: 16px; }
+  .rotary-unit .mixtape-poster { width: 172px; height: 172px; }
+  .mixtape-peek { width: 76px; height: 76px; border-radius: 14px; background-size: cover; background-position: center; opacity: 0.35; flex-shrink: 0; }
+  .mixtape-peek.near { width: 108px; height: 108px; opacity: 0.6; }
+  .rotary-unit .rotary-step-btn { width: 52px; height: 52px; }
+  .rotary-unit .rotary-info { flex: none; align-items: center; text-align: center; gap: 4px; width: 100%; }
+  .rotary-unit .rotary-desc { display: none; }
+  .rotary-unit .rotary-title { font-size: 36px; }
+
+  .viewport.zen.silent .mini-player { opacity: 0; visibility: hidden; }
+  .news-card { position: absolute; right: 96px; top: 50%; transform: translateY(-50%); width: 760px; padding: 26px 34px; border-radius: 28px; background: rgba(14,16,22,0.78); border: 1px solid rgba(255,255,255,0.16); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); opacity: 0; visibility: hidden; transition: opacity 1.5s ease, visibility 0s linear 1.5s; display: flex; flex-direction: column; gap: 10px; }
+  .viewport.zen .news-card.has-news { opacity: 1; visibility: visible; transition: opacity 2s ease 1s; }
+  .news-card.swap .news-title, .news-card.swap .news-sub { opacity: 0; }
+  .news-src { font-size: 20px; letter-spacing: 3px; text-transform: uppercase; color: var(--dim); font-weight: 600; }
+  .news-title { font-size: 34px; font-weight: 600; line-height: 1.2; transition: opacity 0.6s ease; }
+  .news-sub { font-size: 21px; line-height: 1.4; color: rgba(255,255,255,0.75); max-height: 90px; overflow: hidden; transition: opacity 0.6s ease; }
+
+  .time-block { position: relative; }
+  .viewport.zen .clock { font-weight: 300; color: #fff; text-shadow: 0 2px 6px rgba(0,0,0,0.9), 0 6px 40px rgba(0,0,0,0.9); }
+  .viewport.zen .date, .viewport.zen .weather, .viewport.zen .forecast { color: #fff; text-shadow: 0 2px 6px rgba(0,0,0,0.95), 0 4px 24px rgba(0,0,0,0.9); }
+  .viewport.zen .weather { font-size: 32px; }
+  .app-meta span { display: none; }
+
+  .more-menu { position: fixed; right: 96px; top: 150px; z-index: 11; min-width: 380px; padding: 12px; border-radius: 24px; background: rgba(14,16,22,0.96); border: 1px solid rgba(255,255,255,0.2); display: none; flex-direction: column; gap: 8px; }
+  .more-menu.open { display: flex; }
+  .menu-item { padding: 18px 26px; border-radius: 16px; font-size: 26px; font-weight: 600; }
+  .menu-item.focused { background: rgba(255,255,255,0.16); outline: 3px solid #fff; }
+
+  .app-tile { flex-direction: column; justify-content: center; text-align: center; gap: 12px; height: 160px; padding: 18px 20px; }
+  .app-svg-icon { width: 64px; height: 64px; }
+  .app-meta h3 { font-size: 26px; }
+  .app-tile.focused { transform: translateY(-4px) scale(1.04); }
+
+  .mixtape-peek { display: none !important; }
+  .rotary-unit .mixtape-poster { width: 190px; height: 190px; }
+  .rotary-hint { font-size: 20px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+
+  .zen-scrim { position: fixed; left: 0; top: 0; width: 1400px; height: 600px; z-index: 4; pointer-events: none; opacity: 0; transition: opacity 2s ease; background: radial-gradient(ellipse closest-side at 35% 40%, rgba(0,0,0,0.6), rgba(0,0,0,0)); }
+  body.dim[data-zen="true"] .zen-scrim { opacity: 1; }
+  .modal-card, .info-card, .more-menu { zoom: var(--ui-scale, 1); }
+  .rotary-unit { gap: 10px; padding: 14px 28px; }
+  .rotary-unit .mixtape-poster { width: 150px; height: 150px; flex-shrink: 0; }
+  .rotary-unit .mixtape-poster.focused { transform: none; }
+  .rotary-unit .rotary-info { flex-shrink: 0; }
+  .rotary-unit .rotary-pos-tag { font-size: 20px; }
+  .rotary-unit .rotary-title { font-size: 32px; }
+  .rotary-unit .rotary-hint { font-size: 20px; }
+</style>
+</head>
+<body>
+
+  <!-- Layer 1: True Native 4K Photographic Scenery (Never Black Screen) -->
+  <div id="scenery-fallback"></div>
+
+  <!-- Layer 2: Apple TV Aerial Video Stream -->
+  <video id="aerial-video" autoplay loop muted playsinline></video>
+  
+  <!-- Layer 3: Ambient Show Cover Art Glow -->
+  <div id="ambient-art"></div>
+  
+  <!-- Layer 4: Vignette Overlay -->
+  <div class="vignette"></div>
+  <div class="zen-scrim" id="zen-scrim"></div>
+
+  <div class="viewport" id="viewport">
+    <!-- Header: Clock, Weather, Top Navigation Controls -->
+    <div class="header">
+      <div class="time-block">
+        <div class="clock" id="clock">12:00</div>
+        <div class="date-weather">
+          <div class="date" id="date">Monday, 9 November</div>
+          <div class="offline-badge" id="offline">Offline &middot; showing last known info</div>
+          <div class="forecast" id="forecast"></div>
+          <div class="weather" id="weather">London &middot; 10&deg;C &middot; Clear</div>
+        </div>
+      </div>
+      <div class="header-controls">
+        <div class="nav-btn" id="btn-aerial">Scenery: Misty Lake &circlearrowright;</div>
+        <div class="nav-btn" id="btn-config" style="display:none">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+          Settings
+        </div>
+        <div class="nav-btn" id="btn-info">Show Info</div>
+        <div class="nav-btn" id="btn-sleep" style="display:none">Sleep: Off</div>
+        <div class="nav-btn" id="btn-screensaver">Screensaver Mode &boxbox;</div>
+        <div class="nav-btn" id="btn-more">More &hellip;</div>
+      </div>
+    </div>
+
+    <!-- Center: Radio Unit -->
+    <div class="center-unit">
+      <div class="chassis">
+        <!-- Controls Grid -->
+        <div class="chassis-grid">
+          <!-- Live Buttons -->
+          <div class="button-group">
+            <div class="live-btn active" id="btn-live1">
+              <div class="channel-art-bg" id="art-live1"></div>
+              <div class="top-row">
+                <div class="label"></div>
+                <div class="led" id="led-live1"></div>
+              </div>
+              <div class="num">1</div>
+            </div>
+            <div class="live-btn" id="btn-live2">
+              <div class="channel-art-bg" id="art-live2"></div>
+              <div class="top-row">
+                <div class="label"></div>
+                <div class="led" id="led-live2"></div>
+              </div>
+              <div class="num">2</div>
+            </div>
+          </div>
+
+          <!-- Rotary Unit with Cover Art Poster & Prev/Next Buttons -->
+          <div class="rotary-unit">
+            <div class="rotary-stage">
+              <div class="rotary-step-btn" id="btn-rotary-prev">&lsaquo;</div>
+              <div class="mixtape-peek" id="peek-prev2"></div>
+              <div class="mixtape-peek near" id="peek-prev"></div>
+              <div class="mixtape-poster" id="mixtape-poster">
+                <div class="mixtape-poster-overlay" id="led-mixtape"></div>
+              </div>
+              <div class="mixtape-peek near" id="peek-next"></div>
+              <div class="mixtape-peek" id="peek-next2"></div>
+              <div class="rotary-step-btn" id="btn-rotary-next">&rsaquo;</div>
+            </div>
+
+            <div class="rotary-info">
+              <div class="rotary-pos-tag" id="rotary-pos">16 Infinite Mixtapes &middot; 01 / 16</div>
+              <h2 class="rotary-title" id="rotary-title">Poolside</h2>
+              <div class="rotary-hint" id="rotary-hint"></div>
+              <p class="rotary-desc" id="rotary-desc">Balearic, boogie, and sophisti-pop for poolsides, beaches and car stereos.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Broadcast Description -->
+        <div class="broadcast-desc-bar">
+          <div class="live-dot" id="broadcast-dot"></div>
+          <div class="broadcast-meta">
+            <div class="broadcast-title" id="broadcast-title">Connecting to London studios...</div>
+            <div class="broadcast-next" id="broadcast-next"></div>
+            <div class="broadcast-summary" id="broadcast-summary">Live programming broadcast from NTS London and global residents.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Shelf: Clean App Shelf (No Switch 2, 4 Pure Apps) -->
+    <div class="shelf-container">
+      <div class="app-shelf" id="app-shelf-container">
+        <!-- Rendered dynamically from currentApps -->
+      </div>
+    </div>
+
+    <div class="news-card" id="news-card">
+      <div class="news-src" id="news-src">The Guardian</div>
+      <div class="news-title" id="news-title"></div>
+      <div class="news-sub" id="news-sub"></div>
+    </div>
+
+    <!-- Corner mini player (screensaver mode) -->
+    <div class="mini-player" id="mini-player">
+      <div class="mini-art" id="mini-art"></div>
+      <div class="mini-text">
+        <div class="mini-kind"><span class="status-dot" id="mini-dot"></span><span id="mini-kind">NTS Live 1</span></div>
+        <div class="mini-title" id="mini-title">NTS</div>
+        <div class="mini-sub" id="mini-sub"></div>
+      </div>
+    </div>
+
+    <!-- Footer Controls -->
+    <div class="footer" id="footer">
+      <div class="footer-status">
+        <div class="status-dot" id="footer-dot"></div>
+        <span id="footer-track">NTS Live 1 &middot; Connecting...</span>
+      </div>
+      <div class="footer-hints" id="footer-hints">
+        &larr; &rarr; &uarr; &darr; Navigate &nbsp;&bull;&nbsp; Click to Select / Play
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal: Customize Shelf -->
+  <div class="modal-overlay" id="modal-settings">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>Customize Home Shelf</h2>
+        <p>Select which streaming apps appear on your home shelf (Max 4). Navigate and click to toggle.</p>
+      </div>
+
+      <div class="modal-grid" id="modal-app-list">
+        <!-- App toggles generated here -->
+      </div>
+
+      <div class="modal-footer">
+        <div class="modal-btn focused" id="modal-btn-save">Save Shelf</div>
+        <div class="modal-btn" id="modal-btn-cancel">Close</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="info-panel" id="info-panel"><div class="info-card"><div class="info-art" id="info-art"></div><div class="info-body">
+    <div class="info-kind" id="info-kind"></div><div class="info-title" id="info-title"></div><div class="info-meta" id="info-meta"></div>
+    <div class="info-desc" id="info-desc"></div><div class="info-hint">Press any button to close</div></div></div></div>
+
+  <div class="more-menu" id="more-menu"></div>
+
+  <audio id="audio" preload="auto" crossorigin="anonymous"></audio>
+
+<script>
+(function() {
+  "use strict";
+
+  // Catalog of Available Apps (Switch removed)
+  var APP_CATALOG = {
+    "netflix": {
+      name: "Netflix", sub: "4K HDR", id: "org.tizen.netflix-app",
+      svg: '<svg viewBox="0 0 24 24" width="30" height="30" fill="#e50914"><path d="M4 2h4l4 12V2h4v20h-4l-4-12v12H4z"/></svg>'
+    },
+    "stremio": {
+      name: "Stremio", sub: "Cinema", id: "IkWsFHtOY9.Stremio",
+      svg: '<svg viewBox="0 0 24 24" width="30" height="30" fill="#7b5bf5"><circle cx="12" cy="12" r="10" fill="rgba(123,91,245,0.2)" stroke="#7b5bf5" stroke-width="2"/><polygon points="9.5,7.5 16.5,12 9.5,16.5" fill="#ffffff"/></svg>'
+    },
+    "appletv": {
+      name: "Apple TV", sub: "Originals", id: "com.samsung.tv.aria-video",
+      svg: '<svg viewBox="0 0 24 24" width="28" height="28" fill="#ffffff"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.38c.62-.75 1.04-1.8 1.01-2.88-.93.04-2.07.62-2.73 1.37-.58.65-1.09 1.72-1.03 2.76 1.05.08 2.13-.5 2.75-1.25z"/></svg>'
+    },
+    "spotify": {
+      name: "Spotify", sub: "Hi-Fi Audio", id: "rJeHak5zRg.Spotify",
+      svg: '<svg viewBox="0 0 24 24" width="30" height="30" fill="#1ed760"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424c-.18.295-.563.387-.857.207-2.35-1.435-5.308-1.76-8.792-.963-.335.077-.67-.133-.746-.468-.077-.334.132-.67.467-.746 3.808-.87 7.076-.506 9.72 1.113.295.18.388.563.208.857zm1.225-2.723c-.226.367-.706.482-1.072.257-2.69-1.653-6.79-2.132-9.97-1.166-.413.125-.85-.107-.974-.52-.125-.414.107-.85.52-.975 3.633-1.103 8.147-.568 11.24 1.332.366.226.48.706.256 1.072zm.105-2.836C14.692 8.95 8.57 8.75 5.03 9.825c-.496.15-1.022-.132-1.173-.628-.15-.496.132-1.022.628-1.173 4.07-1.235 10.82-1.008 14.61 1.242.446.265.59.845.326 1.29-.265.447-.845.59-1.29.327z"/></svg>'
+    },
+    "youtube": {
+      name: "YouTube", sub: "Videos", id: "com.samsung.tv.cobalt-yt",
+      svg: '<svg viewBox="0 0 24 24" width="30" height="30" fill="#ff0000"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>'
+    },
+    "prime": {
+      name: "Prime Video", sub: "Movies", id: "com.samsung.tv.amazon-video",
+      svg: '<svg viewBox="0 0 24 24" width="30" height="30" fill="#00a8e1"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-9l6 4.5-6 4.5z"/></svg>'
+    },
+    "plex": {
+      name: "Plex", sub: "Media Server", id: "com.samsung.tv.plex",
+      svg: '<svg viewBox="0 0 24 24" width="30" height="30" fill="#e5a00d"><path d="M12 2L2 22h20L12 2zm0 6l5 10H7l5-10z"/></svg>'
+    },
+    "disney": {
+      name: "Disney+", sub: "Streaming", id: "com.samsung.tv.disney-plus",
+      svg: '<svg viewBox="0 0 24 24" width="30" height="30" fill="#113ccf"><circle cx="12" cy="12" r="10" fill="#113ccf"/><path d="M7 12a5 5 0 0 1 10 0 5 5 0 0 1-10 0z" fill="#ffffff"/></svg>'
+    }
+  };
+
+  var defaultShelfKeys = ["netflix", "stremio", "appletv", "spotify"];
+  var START_OPTS = ["Focus last", "Autoplay last", "Autoplay NTS 1", "Autoplay NTS 2"];
+  var CITIES = [
+    { name: "London", lat: 51.5074, lon: -0.1278 },
+    { name: "Lisbon", lat: 38.7223, lon: -9.1393 },
+    { name: "Paris", lat: 48.8566, lon: 2.3522 },
+    { name: "Berlin", lat: 52.52, lon: 13.405 },
+    { name: "New York", lat: 40.7128, lon: -74.006 }
+  ];
+  var sun = null;
+  var fetchOk = { weather: true, nts: true };
+  function updateOffline() {
+    var off = (typeof navigator.onLine === "boolean" && !navigator.onLine) || (!fetchOk.weather && !fetchOk.nts);
+    document.getElementById("offline").className = "offline-badge" + (off ? " show" : "");
+  }
+  window.addEventListener("online", updateOffline);
+  window.addEventListener("offline", updateOffline);
+  var IDLE_OPTS = [15, 30, 60, 0];
+  var GLOW_OPTS = ["Full", "Subtle", "Off"];
+  var prefs = { news: 1, clock24: 1, showDate: 1, sceneryAuto: 1, idle: 0, glow: 0, start: 0, city: 0, dim: 1, last: { mode: 1, dial: 0 } };
+  try {
+    var sp = JSON.parse(localStorage.getItem("dumbtv_prefs"));
+    if (sp) for (var pk in sp) prefs[pk] = sp[pk];
+  } catch(e) {}
+  function savePrefs() {
+    try { localStorage.setItem("dumbtv_prefs", JSON.stringify(prefs)); } catch(e) {}
+  }
+  var PREF_ITEMS = [
+    { label: "About", sub: "Version 1.0.19", get: function() { return "Dumb TV"; }, step: function() {} },
+    { label: "Connects to", sub: "nts.live \u00b7 open-meteo.com \u00b7 theguardian.com \u00b7 rss2json.com", get: function() { return "4 services"; }, step: function() {} },
+    { label: "Guardian news", sub: "Headlines in screensaver", get: function() { return prefs.news ? "ON \u00b7 " + newsStatus : "OFF"; },
+      step: function() { prefs.news = prefs.news ? 0 : 1; showNews(true); } },
+    { label: "Clock format", sub: "12 or 24 hour", get: function() { return prefs.clock24 ? "24h" : "12h"; },
+      step: function() { prefs.clock24 = prefs.clock24 ? 0 : 1; updateTime(); } },
+    { label: "Show date", sub: "Under the clock", get: function() { return prefs.showDate ? "ON" : "OFF"; },
+      step: function() { prefs.showDate = prefs.showDate ? 0 : 1; updateTime(); } },
+    { label: "Scenery", sub: "Day and night automatically", get: function() { return prefs.sceneryAuto ? "Auto" : "Manual"; },
+      step: function() { prefs.sceneryAuto = prefs.sceneryAuto ? 0 : 1; lastPhase = null; updateTime(); } },
+    { label: "Screensaver delay", sub: "Idle time while playing", get: function() { return IDLE_OPTS[prefs.idle] ? IDLE_OPTS[prefs.idle] + "s" : "Never"; },
+      step: function() { prefs.idle = (prefs.idle + 1) % IDLE_OPTS.length; } },
+    { label: "Artwork glow", sub: "Blurred cover behind scene", get: function() { return GLOW_OPTS[prefs.glow]; },
+      step: function() { prefs.glow = (prefs.glow + 1) % GLOW_OPTS.length; updateBroadcastBanner(); } },
+    { label: "On launch", sub: "Start behaviour", get: function() { return START_OPTS[prefs.start]; },
+      step: function() { prefs.start = (prefs.start + 1) % START_OPTS.length; } },
+    { label: "Weather city", sub: "Clock and forecast", get: function() { return CITIES[prefs.city].name; },
+      step: function() { prefs.city = (prefs.city + 1) % CITIES.length; fetchWeather(); } },
+    { label: "Night dimming", sub: "Dim from sunset to sunrise", get: function() { return prefs.dim ? "ON" : "OFF"; },
+      step: function() { prefs.dim = prefs.dim ? 0 : 1; updateTime(); } }
+  ];
+  var savedShelf = null;
+  try {
+    savedShelf = JSON.parse(localStorage.getItem("dumbtv_shelf"));
+  } catch(e) {}
+  
+  var activeShelfKeys = (savedShelf && Array.isArray(savedShelf)) ? savedShelf : defaultShelfKeys;
+  var currentApps = activeShelfKeys.map(function(k) { return APP_CATALOG[k] || APP_CATALOG["netflix"]; });
+
+  // Modal State
+  var isModalOpen = false;
+  var modalRow = 0;
+  var modalAppIndex = 0;
+  var modalBtnIndex = 0;
+  var catalogKeys = Object.keys(APP_CATALOG);
+  var tempSelectedKeys = activeShelfKeys.slice();
+
+  // True 4K Photographic Scenery Baseline + Video Stream
+  var SCENERIES = [
+    { name: "Misty Lake", img: "lake-dark.jpg", video: "https://sylvan.apple.com/Videos/comp_GL_G002_C002_PSNK_v03_SDR_PS_20180925_SDR_2K_AVC.mov" },
+    { name: "Dark Valley", img: "valley-dark.jpg", video: "https://sylvan.apple.com/Videos/comp_GMT026_363A_103NC_E1027_KOREA_JAPAN_NIGHT_v18_SDR_PS_20180907_SDR_2K_AVC.mov" },
+    { name: "Alpine Peak", img: "peak-dark.jpg", video: "https://sylvan.apple.com/Videos/comp_LA_A008_C004_ALTB_ED_FROM_FLAME_RETIME_v46_SDR_PS_20180917_SDR_2K_AVC.mov" }
+  ];
+
+  // All 16 NTS Infinite Mixtapes
+  var MIXTAPES = [
+    {
+      "title": "Poolside",
+      "alias": "poolside",
+      "desc": "Balearic, boogie, and sophisti-pop for poolsides, beaches and car stereos.",
+      "pic": "https://media2.ntslive.co.uk/resize/1600x1600/cf5afb01-5a68-4fa0-a1c6-415b35d09ed6_1542931200.jpeg",
+      "url": "https://streams.radiomast.io/052d2e3c-389c-44cf-a91a-8f5e1854f4c6"
+    },
+    {
+      "title": "Slow Focus",
+      "alias": "slow-focus",
+      "desc": "Tune in and zone out with NTS compendium of the beatless and transcendental. Calming sounds to help you focus or drift away.",
+      "pic": "https://media2.ntslive.co.uk/resize/1600x1600/01f7cbe6-235f-4e33-8f2f-70152c91edf1_1542931200.jpeg",
+      "url": "https://streams.radiomast.io/dfc76352-cda6-4a95-85dd-6f6609f83ba2"
+    },
+    {
+      "title": "Low Key",
+      "alias": "100-percent-hip-hop",
+      "desc": "Covering everything chill \u2013 whether that is downtempo beats, Golden Age hip-hop or grown slow jams.",
+      "pic": "https://media2.ntslive.co.uk/resize/1600x1600/b667c612-1ef6-4bfd-ae87-0cec0a19629d_1626307200.jpeg",
+      "url": "https://streams.radiomast.io/de114902-ee1b-441f-91bc-5468d1e77605"
+    },
+    {
+      "title": "Memory Lane",
+      "alias": "memory-lane",
+      "desc": "Turn back the clock and lose yourself in a world of counter-cultural folk, psychedelia, sweet soul and raw garage rock.",
+      "pic": "https://media2.ntslive.co.uk/resize/1600x1600/f889399d-6277-46e2-9be9-840bbdd25cc5_1560470400.jpeg",
+      "url": "https://streams.radiomast.io/fb8322d8-5791-4170-ace3-a85ffc51eb8b"
+    },
+    {
+      "title": "4 To The Floor",
+      "alias": "4-to-the-floor",
+      "desc": "The beat goes on: music to make you move, whether it is house from Chicago, techno from Detroit or NYC disco.",
+      "pic": "https://media2.ntslive.co.uk/resize/1600x1600/c3bad52d-418b-4bf6-aff5-eea3b9ff1186_1542931200.jpeg",
+      "url": "https://streams.radiomast.io/b629c9c9-0354-4eea-a0e9-b0baea808669"
+    },
+    {
+      "title": "Island Time",
+      "alias": "island-time",
+      "desc": "Easy skanking - vintage reggae, dub, lovers rock, roots and dancehall.",
+      "pic": "https://media2.ntslive.co.uk/resize/1600x1600/f8149e6f-7023-455b-864a-2fa942be6f25_1626307200.jpeg",
+      "url": "https://streams.radiomast.io/0949a876-344c-4f38-87e1-a4df065e5295"
+    },
+    {
+      "title": "The Tube",
+      "alias": "the-tube",
+      "desc": "Oddball post-punk, industrial provocation, no wave and minimal electronics.",
+      "pic": "https://media2.ntslive.co.uk/resize/1600x1600/e97c9b0e-360b-426b-a81d-ba9c00b52787_1626307200.jpeg",
+      "url": "https://streams.radiomast.io/4983780e-6e6d-4a8b-9b68-8c4d6bdb86dc"
+    },
+    {
+      "title": "Sheet Music",
+      "alias": "sheet-music",
+      "desc": "The best of classical, neoclassical and contemporary acoustic composition.",
+      "pic": "https://media2.ntslive.co.uk/resize/1600x1600/039c4a7e-13c5-41e9-913a-a149c4f74d47_1626307200.jpeg",
+      "url": "https://streams.radiomast.io/976b6107-859e-4bc5-8d63-d6992431c414"
+    },
+    {
+      "title": "Feelings",
+      "alias": "feelings",
+      "desc": "Sweet soul, gospel, warm boogie, and heartfelt ballads.",
+      "pic": "https://media2.ntslive.co.uk/resize/1600x1600/f8430b0b-cfbc-4ef6-bb4d-6b3a0772ba6f_1626307200.jpeg",
+      "url": "https://streams.radiomast.io/f89f5370-f9ea-4a8f-8bf1-22ae5fa0c776"
+    },
+    {
+      "title": "Expansions",
+      "alias": "expansions",
+      "desc": "Spiritual jazz, avant-garde and mind-expanding improvisations across the globe.",
+      "pic": "https://media2.ntslive.co.uk/resize/1600x1600/0c79f90f-90db-443b-b6d8-1e4e207d57c7_1542931200.jpeg",
+      "url": "https://streams.radiomast.io/e4c0a484-140a-4adf-ae72-301280d635ba"
+    },
+    {
+      "title": "Rap House",
+      "alias": "rap-house",
+      "desc": "Heavy 808s, street anthems, and underground hip hop from every corner.",
+      "pic": "https://media2.ntslive.co.uk/resize/1600x1600/0177df6b-b46d-4950-8b1b-dc4d72fe4c36_1626307200.jpeg",
+      "url": "https://streams.radiomast.io/21876de8-d5bf-4716-9e1e-6b5909c49d37"
+    },
+    {
+      "title": "Labyrinth",
+      "alias": "labyrinth",
+      "desc": "Enter the dark electronic void, modular textures, drone and experimental noise.",
+      "pic": "https://media2.ntslive.co.uk/resize/1600x1600/e66e60b2-263a-4efb-867f-aa1cfbe54c5c_1626307200.jpeg",
+      "url": "https://streams.radiomast.io/51a1ebc2-ca46-43e4-9567-943551b956ce"
+    },
+    {
+      "title": "Sweat",
+      "alias": "sweat",
+      "desc": "High energy international party rhythms, dancehall, afrobeat, and baile.",
+      "pic": "https://media2.ntslive.co.uk/resize/1600x1600/10b9fa54-3e7e-40bf-94e8-8db97a5b6d5f_1626307200.jpeg",
+      "url": "https://streams.radiomast.io/f5c44deb-55e7-4766-8755-4c5e603ccbb1"
+    },
+    {
+      "title": "Otaku",
+      "alias": "otaku",
+      "desc": "Iconic video game compositions and vintage anime soundtracks.",
+      "pic": "https://media2.ntslive.co.uk/resize/1600x1600/0411eeef-2062-43ce-9a3d-4c3e34b7f83f_1626307200.jpeg",
+      "url": "https://streams.radiomast.io/7481798f-063c-42a2-8048-15ff98fe309e"
+    },
+    {
+      "title": "The Pit",
+      "alias": "the-pit",
+      "desc": "Heavy sludge dirges, black metal, and frenetic thrash.",
+      "pic": "https://media2.ntslive.co.uk/resize/1600x1600/2cb2d04a-810a-4da2-8be4-81e5b15bb318_1626307200.jpeg",
+      "url": "https://streams.radiomast.io/d0877da6-0037-4f67-86d7-3ecbc86e362c"
+    },
+    {
+      "title": "Field Recordings",
+      "alias": "field-recordings",
+      "desc": "Natural environmental ambience, weather recordings and binaural soundscapes.",
+      "pic": "https://media2.ntslive.co.uk/resize/1600x1600/98d1a1b4-2454-436f-bfe1-9665bc75837a_1626307200.jpeg",
+      "url": "https://streams.radiomast.io/86a296fc-a231-4328-bba0-754fa3eb28e7"
+    }
+  ];
+
+  var NTS1_URL = "https://streams.radiomast.io/nts1";
+  var NTS2_URL = "https://streams.radiomast.io/nts2";
+
+  // Grid Navigation Coordinates (Row & Col):
+  // Row 0 (Top Controls): 0 = Aerial, 1 = Config, 2 = Screensaver
+  // Row 1 (Radio): 0 = Live1, 1 = Live2, 2 = Prev, 3 = Poster/Dial, 4 = Next
+  // Row 2 (Apps Shelf): 0..N = App tiles (4 apps)
+  var gridRow = 2; // Starts focused on the Apps shelf
+  var gridCol = 0;
+  var sceneryIndex = 0;
+
+  var mode = 1; // 1 = Live1, 2 = Live2, 3 = Rotary Mixtape
+  var dialIndex = 0;
+  var isPlaying = false;
+  var isBuffering = false;
+  var statusText = "Connecting\u2026";
+  var retryCount = 0;
+  var retryTimer = null;
+  var isZen = false;
+  var idleTimer = null;
+  var ntsLiveShows = { 1: null, 2: null };
+
+  var audio = document.getElementById("audio");
+  var aerialVideo = document.getElementById("aerial-video");
+  var sceneryFallback = document.getElementById("scenery-fallback");
+  var ambientArt = document.getElementById("ambient-art");
+  var viewport = document.getElementById("viewport");
+  var clockEl = document.getElementById("clock");
+  var dateEl = document.getElementById("date");
+  var weatherEl = document.getElementById("weather");
+  var forecastEl = document.getElementById("forecast");
+  var btnAerial = document.getElementById("btn-aerial");
+  var btnConfig = document.getElementById("btn-config");
+  var btnScreensaver = document.getElementById("btn-screensaver");
+  var btnSleep = document.getElementById("btn-sleep");
+  var btnInfo = document.getElementById("btn-info");
+  var btnMore = document.getElementById("btn-more");
+  var broadcastNext = document.getElementById("broadcast-next");
+  var miniPlayer = document.getElementById("mini-player");
+  var btn1 = document.getElementById("btn-live1");
+  var btn2 = document.getElementById("btn-live2");
+  var artLive1 = document.getElementById("art-live1");
+  var artLive2 = document.getElementById("art-live2");
+  var btnPrev = document.getElementById("btn-rotary-prev");
+  var btnNext = document.getElementById("btn-rotary-next");
+  var mixtapePoster = document.getElementById("mixtape-poster");
+  var ledMixtape = document.getElementById("led-mixtape");
+  var rotaryPos = document.getElementById("rotary-pos");
+  var rotaryTitle = document.getElementById("rotary-title");
+  var rotaryDesc = document.getElementById("rotary-desc");
+  var broadcastTitle = document.getElementById("broadcast-title");
+  var broadcastSummary = document.getElementById("broadcast-summary");
+  var broadcastDot = document.getElementById("broadcast-dot");
+  var footerTrack = document.getElementById("footer-track");
+  var footerDot = document.getElementById("footer-dot");
+  var footerHints = document.getElementById("footer-hints");
+  setTimeout(function() { footerHints.style.transition = "opacity 2s"; footerHints.style.opacity = "0"; }, 60000);
+  var modalSettings = document.getElementById("modal-settings");
+  var modalAppList = document.getElementById("modal-app-list");
+  var modalBtnSave = document.getElementById("modal-btn-save");
+  var modalBtnCancel = document.getElementById("modal-btn-cancel");
+
+  // Render App Shelf DOM
+  function renderShelfDOM() {
+    var container = document.getElementById("app-shelf-container");
+    container.innerHTML = "";
+    currentApps.forEach(function(app, index) {
+      var tile = document.createElement("div");
+      tile.className = "app-tile" + (gridRow === 2 && gridCol === index ? " focused" : "");
+      tile.id = "app-" + index;
+      tile.setAttribute("data-id", app.id);
+      tile.innerHTML = '<div class="app-svg-icon">' + app.svg + '</div>' +
+                       '<div class="app-meta"><h3>' + app.name + '</h3><span>' + app.sub + '</span></div>';
+      container.appendChild(tile);
+    });
+  }
+  renderShelfDOM();
+
+  // Render Modal App Toggles List
+  function renderModalAppList() {
+    modalAppList.innerHTML = "";
+    catalogKeys.forEach(function(key, idx) {
+      var app = APP_CATALOG[key];
+      var isSelected = tempSelectedKeys.indexOf(key) !== -1;
+      var item = document.createElement("div");
+      item.className = "modal-app-item" + (modalRow === 0 && modalAppIndex === idx ? " focused" : "");
+      item.id = "modal-item-" + idx;
+      item.innerHTML = '<div class="modal-app-left">' +
+                       '<div class="app-svg-icon">' + app.svg + '</div>' +
+                       '<div><div style="font-weight:600; font-size:22px;">' + app.name + '</div><div style="font-size:20px; color:var(--dim);">' + app.sub + '</div></div>' +
+                       '</div>' +
+                       '<div class="modal-toggle-badge' + (isSelected ? ' active' : '') + '">' + (isSelected ? 'ON' : 'OFF') + '</div>';
+      modalAppList.appendChild(item);
+    });
+
+    PREF_ITEMS.forEach(function(p, pi) {
+      var idx = catalogKeys.length + pi;
+      var el = document.createElement("div");
+      el.className = "modal-app-item" + (modalRow === 0 && modalAppIndex === idx ? " focused" : "");
+      el.innerHTML = '<div class="modal-app-left"><div><div style="font-weight:700; font-size:22px;">' + p.label +
+                     '</div><div style="font-size:20px; color:var(--dim);">' + p.sub + '</div></div></div>' +
+                     '<div class="modal-toggle-badge active">' + p.get() + '</div>';
+      modalAppList.appendChild(el);
+    });
+    var fe = modalAppList.querySelector(".focused");
+    if (fe && fe.scrollIntoView) fe.scrollIntoView(false);
+
+    modalBtnSave.className = "modal-btn" + (modalRow === 1 && modalBtnIndex === 0 ? " focused" : "");
+    modalBtnCancel.className = "modal-btn" + (modalRow === 1 && modalBtnIndex === 1 ? " focused" : "");
+  }
+
+  function openShelfEditor() {
+    isModalOpen = true;
+    modalRow = 0;
+    modalAppIndex = 0;
+    tempSelectedKeys = activeShelfKeys.slice();
+    renderModalAppList();
+    modalSettings.className = "modal-overlay open";
+  }
+
+  function closeShelfEditor() {
+    isModalOpen = false;
+    modalSettings.className = "modal-overlay";
+    gridRow = 0;
+    gridCol = 3;
+    renderUI();
+  }
+
+  function saveShelfEditor() {
+    if (tempSelectedKeys.length > 0) {
+      activeShelfKeys = tempSelectedKeys.slice(0, 4);
+      currentApps = activeShelfKeys.map(function(k) { return APP_CATALOG[k]; });
+      try {
+        localStorage.setItem("dumbtv_shelf", JSON.stringify(activeShelfKeys));
+      } catch(e) {}
+      renderShelfDOM();
+    }
+    closeShelfEditor();
+  }
+
+  function toggleModalItem(idx) {
+    if (idx >= catalogKeys.length) {
+      PREF_ITEMS[idx - catalogKeys.length].step();
+      savePrefs();
+      renderModalAppList();
+      return;
+    }
+    var key = catalogKeys[idx];
+    var pos = tempSelectedKeys.indexOf(key);
+    if (pos !== -1) {
+      if (tempSelectedKeys.length > 1) {
+        tempSelectedKeys.splice(pos, 1);
+      }
+    } else {
+      if (tempSelectedKeys.length < 4) {
+        tempSelectedKeys.push(key);
+      }
+    }
+    renderModalAppList();
+  }
+
+  // Load Scenery: Always sets 4K Photo Baseline + initiates video
+  var sceneryName = "";
+  var videoWatch = null;
+  function loadScenery(idx) {
+    var item = SCENERIES[idx];
+    sceneryName = item.name;
+    btnAerial.textContent = "Scenery: " + item.name + " \u21ba";
+    clearTimeout(videoWatch);
+    videoWatch = setTimeout(function() {
+      if (!aerialVideo.classList.contains("visible")) {
+        btnAerial.textContent = "Scenery: " + item.name + " (photo)";
+      }
+    }, 25000);
+    sceneryFallback.style.backgroundImage = "url('" + item.img + "')";
+    aerialVideo.classList.remove("visible");
+    aerialVideo.src = item.video;
+    aerialVideo.load();
+    var p = aerialVideo.play();
+    if (p && p.catch) { p.catch(function() {}); }
+  }
+
+  aerialVideo.addEventListener("error", function() {
+    var code = aerialVideo.error ? aerialVideo.error.code : "?";
+    btnAerial.textContent = "Scenery: " + sceneryName + " (photo only, error " + code + ")";
+  });
+  aerialVideo.addEventListener("playing", function() {
+    btnAerial.textContent = "Scenery: " + sceneryName + " \u21ba";
+    aerialVideo.classList.add("visible");
+  });
+  loadScenery(0);
+
+  function decodeHtml(str) {
+    if (!str) return "";
+    var txt = document.createElement("textarea");
+    txt.innerHTML = str;
+    return txt.value;
+  }
+
+  var lastPhase = null;
+  var sunFailed = false;
+  function sunPhase(now) {
+    if (!sun) {
+      var h = now.getHours();
+      return (h >= 22 || h < 7) ? "night" : "day";
+    }
+    var cm = ((now.getHours() * 60 + now.getMinutes() + sun.offset) % 1440 + 1440) % 1440;
+    if (Math.abs(cm - sun.rise) <= 60) return "sunrise";
+    if (Math.abs(cm - sun.set) <= 60) return "sunset";
+    return (cm > sun.rise && cm < sun.set) ? "day" : "night";
+  }
+  function autoScenery(phase) {
+    var pool = [];
+    SCENERIES.forEach(function(it, i) { if (it.tod === phase) pool.push(i); });
+    if (!pool.length && (phase === "sunrise" || phase === "sunset")) {
+      SCENERIES.forEach(function(it, i) { if (it.tod === "day") pool.push(i); });
+    }
+    if (phase === "night" && pool.length < 3) {
+      SCENERIES.forEach(function(it, i) { if (it.tod === "sunset" && pool.indexOf(i) < 0) pool.push(i); });
+    }
+    if (!pool.length) SCENERIES.forEach(function(it, i) { pool.push(i); });
+    if (pool.length > 1) pool = pool.filter(function(i) { return i !== sceneryIndex; });
+    sceneryIndex = pool[Math.floor(Math.random() * pool.length)];
+    loadScenery(sceneryIndex);
+  }
+  setInterval(function() { if (prefs.sceneryAuto && lastPhase) autoScenery(lastPhase); }, 1800000);
+  (function loadAerialList() {
+    var x = new XMLHttpRequest();
+    x.open("GET", "aerials.json");
+    x.onload = function() {
+      try {
+        var list = JSON.parse(x.responseText);
+        if (list && list.length) {
+          SCENERIES = list;
+          sceneryIndex = 0;
+          if (prefs.sceneryAuto && lastPhase) autoScenery(lastPhase); else loadScenery(0);
+        }
+      } catch (e) {}
+    };
+    x.send();
+  })();
+  function updateTime() {
+    var now = new Date();
+    var h = String(now.getHours()).padStart(2, "0");
+    var m = String(now.getMinutes()).padStart(2, "0");
+    if (prefs.clock24) {
+      clockEl.textContent = h + ":" + m;
+    } else {
+      var h12 = now.getHours() % 12 || 12;
+      clockEl.innerHTML = h12 + ":" + m + '<span class="ampm">' + (now.getHours() < 12 ? "AM" : "PM") + '</span>';
+    }
+    var phase = sunPhase(now);
+    var night = phase === "night";
+    document.body.className = (prefs.dim && night) ? "dim" : "";
+    if (phase !== lastPhase && (sun || sunFailed)) {
+      lastPhase = phase;
+      if (prefs.sceneryAuto) autoScenery(phase);
+    }
+
+    var days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    var months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    dateEl.textContent = prefs.showDate ? days[now.getDay()] + ", " + now.getDate() + " " + months[now.getMonth()] : "";
+  }
+  setInterval(updateTime, 1000);
+  updateTime();
+
+  function fetchWeather() {
+    fetch("https://api.open-meteo.com/v1/forecast?latitude=" + CITIES[prefs.city].lat + "&longitude=" + CITIES[prefs.city].lon + "&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset&timezone=auto")
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (!data || !data.current) return;
+        fetchOk.weather = true; updateOffline();
+        var temp = Math.round(data.current.temperature_2m);
+        var code = data.current.weather_code;
+        var desc = "Clear";
+        if (code >= 1 && code <= 3) desc = "Partly Cloudy";
+        else if (code >= 45 && code <= 48) desc = "Misty";
+        else if (code >= 51 && code <= 67) desc = "Rain";
+        else if (code >= 71) desc = "Snow";
+        weatherEl.textContent = CITIES[prefs.city].name + " \u00b7 " + temp + "\u00b0C \u00b7 " + desc;
+        if (data.daily && data.daily.sunrise) {
+          var tm = function(t) { return parseInt(t.slice(11, 13), 10) * 60 + parseInt(t.slice(14, 16), 10); };
+          var tvNow = new Date();
+          sun = { rise: tm(data.daily.sunrise[0]), set: tm(data.daily.sunset[0]),
+                  offset: tm(data.current.time) - (tvNow.getHours() * 60 + tvNow.getMinutes()) };
+          updateTime();
+        }
+        if (data.daily) {
+          forecastEl.textContent = "Today  High " + Math.round(data.daily.temperature_2m_max[0]) + "\u00b0  \u00b7  Low " + Math.round(data.daily.temperature_2m_min[0]) + "\u00b0  \u00b7  Rain " + data.daily.precipitation_probability_max[0] + "%";
+        }
+      })
+      .catch(function() {
+        fetchOk.weather = false; updateOffline(); sunFailed = true; updateTime();
+        weatherEl.textContent = CITIES[prefs.city].name;
+      });
+  }
+  fetchWeather();
+  setInterval(fetchWeather, 900000);
+
+  // Live NTS Show Metadata Fetch
+  function fetchNtsMetadata() {
+    fetch("https://www.nts.live/api/v2/live")
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (!data || !data.results) return;
+        fetchOk.nts = true; updateOffline();
+        var ch1 = data.results[0];
+        var ch2 = data.results[1];
+        if (ch1 && ch1.now) {
+          var m1 = ch1.now.embeds && ch1.now.embeds.details && ch1.now.embeds.details.media ? ch1.now.embeds.details.media.picture_large : "";
+          ntsLiveShows[1] = {
+            title: decodeHtml(ch1.now.broadcast_title || "NTS Live Channel 1"),
+            desc: decodeHtml((ch1.now.embeds && ch1.now.embeds.details && ch1.now.embeds.details.description) || "Live from London"),
+            pic: m1,
+            location: ch1.now.embeds && ch1.now.embeds.details ? (ch1.now.embeds.details.location_long || "") : "",
+            genres: ch1.now.embeds && ch1.now.embeds.details && ch1.now.embeds.details.genres ? ch1.now.embeds.details.genres.map(function(g) { return g.value; }).join(", ") : "",
+            next: ch1.next ? decodeHtml(ch1.next.broadcast_title || "") : "",
+            nextAt: ch1.next && ch1.next.start_timestamp ? ch1.next.start_timestamp : ""
+          };
+          if (m1) artLive1.style.backgroundImage = "url('" + m1 + "')";
+        }
+        if (ch2 && ch2.now) {
+          var m2 = ch2.now.embeds && ch2.now.embeds.details && ch2.now.embeds.details.media ? ch2.now.embeds.details.media.picture_large : "";
+          ntsLiveShows[2] = {
+            title: decodeHtml(ch2.now.broadcast_title || "NTS Live Channel 2"),
+            desc: decodeHtml((ch2.now.embeds && ch2.now.embeds.details && ch2.now.embeds.details.description) || "Live global broadcast"),
+            pic: m2,
+            location: ch2.now.embeds && ch2.now.embeds.details ? (ch2.now.embeds.details.location_long || "") : "",
+            genres: ch2.now.embeds && ch2.now.embeds.details && ch2.now.embeds.details.genres ? ch2.now.embeds.details.genres.map(function(g) { return g.value; }).join(", ") : "",
+            next: ch2.next ? decodeHtml(ch2.next.broadcast_title || "") : "",
+            nextAt: ch2.next && ch2.next.start_timestamp ? ch2.next.start_timestamp : ""
+          };
+          if (m2) artLive2.style.backgroundImage = "url('" + m2 + "')";
+        }
+        updateBroadcastBanner();
+      })
+      .catch(function() { fetchOk.nts = false; updateOffline(); });
+  }
+  setInterval(fetchNtsMetadata, 60000);
+  fetchNtsMetadata();
+
+  function updateBroadcastBanner() {
+    var activeArt = "";
+    if (mode === 3) {
+      broadcastDot.style.background = "#34c759";
+      broadcastDot.style.boxShadow = "0 0 10px #34c759";
+      broadcastTitle.textContent = "Infinite Mixtape \u2014 " + MIXTAPES[dialIndex].title;
+      broadcastSummary.textContent = MIXTAPES[dialIndex].desc;
+      footerTrack.textContent = "Infinite Mixtape \u00b7 " + MIXTAPES[dialIndex].title;
+      footerDot.style.background = "#34c759";
+      activeArt = MIXTAPES[dialIndex].pic;
+    } else {
+      broadcastDot.style.background = "#ff3b30";
+      broadcastDot.style.boxShadow = "0 0 10px #ff3b30";
+      footerDot.style.background = "#ff3b30";
+      var s = ntsLiveShows[mode];
+      if (s) {
+        broadcastTitle.textContent = s.title + " \u2014 Channel " + mode;
+        broadcastSummary.textContent = s.desc;
+        footerTrack.textContent = "NTS Live " + mode + " \u00b7 " + s.title;
+        activeArt = s.pic;
+      } else {
+        broadcastTitle.textContent = "NTS Live Channel " + mode;
+        broadcastSummary.textContent = "Broadcasting live from London & global studios.";
+        footerTrack.textContent = "NTS Live Channel " + mode;
+      }
+    }
+
+    if (activeArt) {
+      ambientArt.style.backgroundImage = "url('" + activeArt + "')";
+      ambientArt.style.opacity = String((isPlaying ? 0.4 : 0.15) * [1, 0.45, 0][prefs.glow]);
+    }
+
+    var nsh = mode !== 3 ? ntsLiveShows[mode] : null;
+    var nextTime = "";
+    if (nsh && nsh.nextAt) {
+      var nd = new Date(nsh.nextAt);
+      nextTime = String(nd.getHours()).padStart(2, "0") + ":" + String(nd.getMinutes()).padStart(2, "0") + "  ";
+    }
+    broadcastNext.textContent = (nsh && nsh.next) ? "NEXT  " + nextTime + nsh.next : "";
+    var show = mode === 3 ? null : ntsLiveShows[mode];
+    var kind = mode === 3 ? "Infinite Mixtape" : "NTS Live " + mode;
+    if (isBuffering) kind += " \u00b7 " + statusText;
+    document.getElementById("mini-kind").textContent = kind;
+    document.getElementById("mini-dot").style.background = mode === 3 ? "#34c759" : "#ff3b30";
+    document.getElementById("mini-title").textContent = mode === 3 ? MIXTAPES[dialIndex].title : (show ? show.title : "NTS Radio");
+    document.getElementById("mini-sub").textContent = mode === 3 ? "16 Infinite Mixtapes" : "Live from London";
+    if (activeArt) document.getElementById("mini-art").style.backgroundImage = "url('" + activeArt + "')";
+    if (isBuffering) footerTrack.textContent = kind;
+  }
+
+  function getStreamUrl() {
+    if (mode === 1) return NTS1_URL;
+    if (mode === 2) return NTS2_URL;
+    return MIXTAPES[dialIndex].url;
+  }
+
+  function renderUI() {
+    // Row 0 (Top Controls): 0 = Aerial, 1 = Config, 2 = Screensaver
+    btnAerial.className = "nav-btn" + (gridRow === 0 && gridCol === 0 ? " focused" : "");
+    btnInfo.className = "nav-btn" + (gridRow === 0 && gridCol === 1 ? " focused" : "");
+    btnScreensaver.className = "nav-btn" + (gridRow === 0 && gridCol === 2 ? " focused" : "");
+    btnMore.className = "nav-btn" + (gridRow === 0 && gridCol === 3 ? " focused" : "");
+
+    // Row 1 (Radio)
+    btn1.className = "live-btn" + (mode === 1 ? " active" : "") + (mode === 1 && isPlaying ? " playing" : "") + (gridRow === 1 && gridCol === 0 ? " focused" : "");
+    btn2.className = "live-btn" + (mode === 2 ? " active" : "") + (mode === 2 && isPlaying ? " playing" : "") + (gridRow === 1 && gridCol === 1 ? " focused" : "");
+    btnPrev.className = "rotary-step-btn" + (gridRow === 1 && gridCol === 2 ? " focused" : "");
+    mixtapePoster.className = "mixtape-poster" + (mode === 3 ? " active" : "") + (mode === 3 && isPlaying ? " playing" : "") + (gridRow === 1 && gridCol === 3 ? " focused" : "");
+    btnNext.className = "rotary-step-btn" + (gridRow === 1 && gridCol === 4 ? " focused" : "");
+
+    // Rotary Mixtape Poster & Info
+    var curMix = MIXTAPES[dialIndex];
+    [["peek-prev2", -2], ["peek-prev", -1], ["peek-next", 1], ["peek-next2", 2]].forEach(function(p) {
+      document.getElementById(p[0]).style.backgroundImage = "url('" + MIXTAPES[(dialIndex + p[1] + MIXTAPES.length * 2) % MIXTAPES.length].pic + "')";
+    });
+    document.body.setAttribute("data-zen", isZen ? "true" : "false");
+    if (isZen) viewport.className = "viewport zen" + (isPlaying ? "" : " silent");
+    document.getElementById("rotary-hint").textContent = "\u2039 " + MIXTAPES[(dialIndex - 1 + MIXTAPES.length) % MIXTAPES.length].title + "   \u00b7   " + MIXTAPES[(dialIndex + 1) % MIXTAPES.length].title + " \u203a";
+    document.querySelector(".footer-status").style.visibility = isPlaying ? "" : "hidden";
+    mixtapePoster.style.backgroundImage = "url('" + curMix.pic + "')";
+    var numStr = String(dialIndex + 1).padStart(2, "0");
+    rotaryPos.textContent = "16 Infinite Mixtapes \u00b7 " + numStr + " / 16";
+    rotaryTitle.textContent = curMix.title;
+    rotaryDesc.textContent = curMix.desc;
+
+    // Row 2 (Apps Shelf)
+    for (var a = 0; a < currentApps.length; a++) {
+      var tile = document.getElementById("app-" + a);
+      if (tile) tile.className = "app-tile" + (gridRow === 2 && gridCol === a ? " focused" : "");
+    }
+
+    updateBroadcastBanner();
+
+    if (isZen) {
+      footerHints.innerHTML = 'Press any direction or click for controls';
+    } else {
+      footerHints.innerHTML = '&larr; &rarr; &uarr; &darr; Navigate &nbsp;&bull;&nbsp; Click to Select / Play';
+    }
+  }
+
+  // Universal Hardware Audio Engine (Tizen AVPlay + HTML5 Audio Fallback)
+  var playToken = 0;
+  function scheduleRetry(token) {
+    if (token !== playToken || !isPlaying) return;
+    var offline = typeof navigator.onLine === "boolean" && !navigator.onLine;
+    if (retryCount >= 6) {
+      statusText = offline ? "No internet connection" : "NTS stream is down, try again later";
+      isPlaying = false;
+      isBuffering = true;
+      renderUI();
+      return;
+    }
+    retryCount++;
+    statusText = offline ? "No internet, waiting\u2026" : "Stream unavailable, retrying (" + retryCount + "/6)\u2026";
+    isBuffering = true;
+    renderUI();
+    clearTimeout(retryTimer);
+    retryTimer = setTimeout(function() {
+      if (token === playToken && isPlaying) { playAudio(true); }
+    }, 3000);
+  }
+
+  function startPlayback(url, isRetry) {
+    var token = ++playToken;
+    if (!isRetry) { retryCount = 0; clearTimeout(retryTimer); }
+    statusText = "Connecting\u2026";
+    isPlaying = true;
+    isBuffering = true;
+    renderUI();
+    if (window.webapis && window.webapis.avplay) {
+      try {
+        webapis.avplay.stop();
+        webapis.avplay.close();
+      } catch(e) {}
+      try {
+        webapis.avplay.open(url);
+        try {
+          webapis.avplay.setBufferingParam("PLAYER_BUFFER_FOR_PLAY", "PLAYER_BUFFER_SIZE_IN_SECOND", 1);
+          webapis.avplay.setBufferingParam("PLAYER_BUFFER_FOR_RESUME", "PLAYER_BUFFER_SIZE_IN_SECOND", 1);
+        } catch(e) {}
+        webapis.avplay.setListener({
+          onerror: function() { scheduleRetry(token); },
+          onstreamcompleted: function() { scheduleRetry(token); }
+        });
+        webapis.avplay.prepareAsync(function() {
+          if (token !== playToken) return;
+          webapis.avplay.play();
+          isBuffering = false;
+          renderUI();
+        }, function(err) {
+          fallbackHtml5Audio(url, token);
+        });
+        return;
+      } catch(e) {
+        fallbackHtml5Audio(url, token);
+      }
+    } else {
+      fallbackHtml5Audio(url, token);
+    }
+  }
+
+  function fallbackHtml5Audio(url, token) {
+    audio.src = url;
+    audio.load();
+    var p = audio.play();
+    if (p && p.then) {
+      p.then(function() {
+        isBuffering = false;
+        renderUI();
+      }).catch(function() {
+        scheduleRetry(token);
+      });
+    }
+  }
+
+  audio.addEventListener("error", function() {
+    if (isPlaying && audio.getAttribute("src")) scheduleRetry(playToken);
+  });
+
+  function playAudio(isRetry) {
+    prefs.last = { mode: mode, dial: dialIndex };
+    savePrefs();
+    startPlayback(getStreamUrl(), isRetry === true);
+  }
+
+  function stopAudio() {
+    playToken++;
+    clearTimeout(retryTimer);
+    if (window.webapis && window.webapis.avplay) {
+      try {
+        webapis.avplay.stop();
+        webapis.avplay.close();
+      } catch(e) {}
+    }
+    audio.pause();
+    audio.src = "";
+    isPlaying = false;
+    isBuffering = false;
+    renderUI();
+  }
+
+  function launchApp(tile) {
+    var appId = tile.getAttribute("data-id");
+    if (isPlaying) stopAudio();
+    if (window.tizen && tizen.application) {
+      tizen.application.launch(appId, function() {}, function(err) {
+        console.error("Launch error:", err);
+      });
+    }
+  }
+
+  function enterScreensaver() {
+    isZen = true;
+    viewport.className = "viewport zen" + (isPlaying ? "" : " silent");
+    renderUI();
+  }
+
+  function exitScreensaver() {
+    if (isZen) {
+      isZen = false;
+      viewport.className = "viewport";
+      renderUI();
+    }
+    clearTimeout(idleTimer);
+    if (!IDLE_OPTS[prefs.idle]) return;
+    idleTimer = setTimeout(function() {
+      if (!isBuffering) {
+        enterScreensaver();
+      }
+    }, IDLE_OPTS[prefs.idle] * 1000);
+  }
+
+  function toggleMode(m) {
+    if (isPlaying && mode === m) { stopAudio(); return; }
+    mode = m;
+    playAudio();
+  }
+
+  function exitApp() {
+    document.body.style.transition = "opacity 0.5s ease";
+    document.body.style.opacity = "0";
+    setTimeout(function() {
+      try { tizen.application.getCurrentApplication().exit(); } catch (ex) { document.body.style.opacity = ""; }
+    }, 500);
+  }
+
+  document.addEventListener("visibilitychange", function() {
+    if (document.hidden && isPlaying) stopAudio();
+  });
+
+  var menuOpen = false;
+  var menuIdx = 0;
+  function menuItems() { return ["Settings", btnSleep.textContent]; }
+  function renderMenu() {
+    var el = document.getElementById("more-menu");
+    el.innerHTML = "";
+    menuItems().forEach(function(t, i) {
+      var d = document.createElement("div");
+      d.className = "menu-item" + (i === menuIdx ? " focused" : "");
+      d.textContent = t;
+      el.appendChild(d);
+    });
+  }
+  function openMenu() { menuOpen = true; menuIdx = 0; renderMenu(); document.getElementById("more-menu").className = "more-menu open"; }
+  function closeMenu() { menuOpen = false; document.getElementById("more-menu").className = "more-menu"; }
+  function handleMenuNav(code) {
+    if (code === 38) menuIdx = Math.max(0, menuIdx - 1);
+    else if (code === 40) menuIdx = Math.min(1, menuIdx + 1);
+    else if (code === 13) {
+      if (menuIdx === 0) { closeMenu(); openShelfEditor(); return; }
+      cycleSleep();
+    } else if (code === 27 || code === 10009 || code === 37 || code === 39) { closeMenu(); return; }
+    renderMenu();
+  }
+
+  var isInfoOpen = false;
+  function openInfo() {
+    var show = mode === 3 ? null : ntsLiveShows[mode];
+    var title, desc, meta, art, kind;
+    if (mode === 3) {
+      var mx = MIXTAPES[dialIndex];
+      kind = "Infinite Mixtape"; title = mx.title; desc = mx.desc; meta = "NTS 24/7 mixtape"; art = mx.pic;
+    } else {
+      kind = "NTS Live " + mode;
+      title = show ? show.title : "NTS Live " + mode;
+      desc = show ? show.desc : "";
+      meta = show ? [show.location, show.genres, show.next ? "Next: " + show.next : ""].filter(Boolean).join("  \u00b7  ") : "";
+      art = show ? show.pic : "";
+    }
+    document.getElementById("info-kind").textContent = kind;
+    document.getElementById("info-title").textContent = title;
+    document.getElementById("info-meta").textContent = meta;
+    document.getElementById("info-desc").textContent = desc;
+    document.getElementById("info-art").style.backgroundImage = art ? "url('" + art + "')" : "none";
+    document.getElementById("info-panel").className = "info-panel open";
+    isInfoOpen = true;
+  }
+  function closeInfo() {
+    isInfoOpen = false;
+    document.getElementById("info-panel").className = "info-panel";
+  }
+
+  var newsItems = [];
+  var newsIdx = 0;
+  var newsStatus = "loading";
+  function cleanSub(html) {
+    var tmp = document.createElement("div");
+    tmp.innerHTML = html || "";
+    var p1 = tmp.getElementsByTagName("p")[0];
+    return ((p1 || tmp).textContent || "").replace(/\s+/g, " ").trim().slice(0, 200);
+  }
+  function gotNews(out, via) {
+    if (!out.length) return;
+    newsItems = out;
+    newsStatus = out.length + " headlines";
+    showNews(true);
+  }
+  function fetchNewsViaJson() {
+    fetch("https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(NEWS_RSS))
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        var out = (data.items || []).slice(0, 12).map(function(i) {
+          return { title: i.title, sub: cleanSub(i.description), section: (i.categories && i.categories[0]) || "" };
+        });
+        if (out.length) gotNews(out); else newsStatus = "unavailable";
+      })
+      .catch(function() { newsStatus = "unavailable"; });
+  }
+  var NEWS_RSS = "https://www.theguardian.com/uk/rss";
+  function fetchNews() {
+    var x = new XMLHttpRequest();
+    x.open("GET", NEWS_RSS);
+    x.timeout = 10000;
+    x.onload = function() {
+      try {
+        var doc = new DOMParser().parseFromString(x.responseText, "text/xml");
+        var items = doc.getElementsByTagName("item");
+        var out = [];
+        for (var i = 0; i < items.length && out.length < 12; i++) {
+          var t = items[i].getElementsByTagName("title")[0];
+          var d = items[i].getElementsByTagName("description")[0];
+          var c = items[i].getElementsByTagName("category")[0];
+          if (t) out.push({ title: t.textContent, sub: cleanSub(d ? d.textContent : ""), section: c ? c.textContent : "" });
+        }
+        if (out.length) gotNews(out); else fetchNewsViaJson();
+      } catch (e) { fetchNewsViaJson(); }
+    };
+    x.onerror = fetchNewsViaJson;
+    x.ontimeout = fetchNewsViaJson;
+    x.send();
+  }
+  function showNews(first) {
+    var card = document.getElementById("news-card");
+    if (!prefs.news || !newsItems.length) { card.className = "news-card"; return; }
+    var apply = function() {
+      var n = newsItems[newsIdx % newsItems.length];
+      document.getElementById("news-src").textContent = "The Guardian" + (n.section ? " \u00b7 " + n.section : "");
+      document.getElementById("news-title").textContent = n.title;
+      document.getElementById("news-sub").textContent = n.sub;
+      card.className = "news-card has-news";
+    };
+    if (first) { apply(); return; }
+    card.className = "news-card has-news swap";
+    setTimeout(function() { newsIdx++; apply(); }, 700);
+  }
+  setInterval(function() { if (isZen) showNews(false); }, 15000);
+  setInterval(fetchNews, 900000);
+  fetchNews();
+
+  var sleepOptions = [0, 30, 60, 90];
+  var sleepIdx = 0;
+  var sleepTimer = null;
+  function cycleSleep() {
+    sleepIdx = (sleepIdx + 1) % sleepOptions.length;
+    clearTimeout(sleepTimer);
+    var m = sleepOptions[sleepIdx];
+    btnSleep.textContent = m ? "Sleep: " + m + " min" : "Sleep: Off";
+    if (m) sleepTimer = setTimeout(function() {
+      stopAudio();
+      sleepIdx = 0;
+      btnSleep.textContent = "Sleep: Off";
+    }, m * 60000);
+  }
+
+  var driftIdx = 0;
+  setInterval(function() {
+    driftIdx = (driftIdx + 1) % 4;
+    miniPlayer.className = "mini-player" + (driftIdx ? " pos" + driftIdx : "");
+  }, 600000);
+
+  try {
+    if (window.tizen && tizen.tvinputdevice) {
+      ["ColorF0Red", "ColorF1Green", "ColorF2Yellow", "ColorF3Blue"].forEach(function(k) {
+        tizen.tvinputdevice.registerKey(k);
+      });
+    }
+  } catch (e) {}
+
+  function colourKey(code) {
+    if (code === 403) { mode = 1; }
+    else if (code === 404) { mode = 2; }
+    else if (code === 405) { mode = 3; dialIndex = (dialIndex + 1) % MIXTAPES.length; }
+    else if (code === 406) { enterScreensaver(); return; }
+    else return;
+    playAudio();
+    renderUI();
+  }
+
+  // Keydown Navigation Handler
+  window.addEventListener("keydown", function(e) {
+    if (menuOpen) { handleMenuNav(e.keyCode); return; }
+    if (isModalOpen) {
+      handleModalNav(e.keyCode);
+      return;
+    }
+
+    if (isInfoOpen) { closeInfo(); exitScreensaver(); return; }
+    if (e.keyCode === 457) { exitScreensaver(); openInfo(); return; }
+    if (e.keyCode === 10009 || e.keyCode === 27) {
+      if (isZen) { exitScreensaver(); return; }
+      exitApp();
+      return;
+    }
+    if (e.keyCode >= 403 && e.keyCode <= 406) { exitScreensaver(); colourKey(e.keyCode); return; }
+    if (isZen) {
+      exitScreensaver();
+      return;
+    }
+    exitScreensaver();
+
+    switch (e.keyCode) {
+      case 38: // Up
+        if (gridRow === 2) {
+          gridRow = 1;
+          if (gridCol <= 1) gridCol = 0;
+          else if (gridCol === 2) gridCol = 1;
+          else gridCol = 3;
+        } else if (gridRow === 1) {
+          gridRow = 0;
+          if (gridCol === 0) gridCol = 0;
+          else if (gridCol <= 2) gridCol = 1;
+          else if (gridCol === 3) gridCol = 2;
+          else gridCol = 3;
+        }
+        renderUI();
+        break;
+
+      case 40: // Down
+        if (gridRow === 0) {
+          gridRow = 1;
+          if (gridCol === 0) gridCol = 0;
+          else if (gridCol === 1) gridCol = 1;
+          else if (gridCol === 2) gridCol = 3;
+          else gridCol = 4;
+        } else if (gridRow === 1) {
+          gridRow = 2;
+          if (gridCol === 0) gridCol = 0;
+          else if (gridCol === 1) gridCol = 1;
+          else gridCol = 2;
+        }
+        renderUI();
+        break;
+
+      case 37: // Left
+        if (gridRow === 0) {
+          gridCol = (gridCol - 1 + 4) % 4;
+        } else if (gridRow === 1) {
+          // 0=Live1, 1=Live2, 2=Prev, 3=Poster, 4=Next
+          gridCol = (gridCol - 1 + 5) % 5;
+        } else if (gridRow === 2) {
+          gridCol = (gridCol - 1 + currentApps.length) % currentApps.length;
+        }
+        renderUI();
+        break;
+
+      case 39: // Right
+        if (gridRow === 0) {
+          gridCol = (gridCol + 1) % 4;
+        } else if (gridRow === 1) {
+          gridCol = (gridCol + 1) % 5;
+        } else if (gridRow === 2) {
+          gridCol = (gridCol + 1) % currentApps.length;
+        }
+        renderUI();
+        break;
+
+      case 13: // Enter / OK
+        if (gridRow === 0) {
+          if (gridCol === 0) {
+            sceneryIndex = (sceneryIndex + 1) % SCENERIES.length;
+            prefs.sceneryAuto = 0;
+            savePrefs();
+            loadScenery(sceneryIndex);
+          } else if (gridCol === 1) {
+            openInfo();
+          } else if (gridCol === 2) {
+            enterScreensaver();
+          } else {
+            openMenu();
+          }
+        } else if (gridRow === 1) {
+          if (gridCol === 0) {
+            toggleMode(1);
+          } else if (gridCol === 1) {
+            toggleMode(2);
+          } else if (gridCol === 2) {
+            dialIndex = (dialIndex - 1 + MIXTAPES.length) % MIXTAPES.length;
+            mode = 3;
+            playAudio();
+          } else if (gridCol === 3) {
+            toggleMode(3);
+          } else if (gridCol === 4) {
+            dialIndex = (dialIndex + 1) % MIXTAPES.length;
+            mode = 3;
+            playAudio();
+          }
+        } else if (gridRow === 2) {
+          var selectedTile = document.getElementById("app-" + gridCol);
+          if (selectedTile) launchApp(selectedTile);
+        }
+        renderUI();
+        break;
+    }
+  });
+
+  // Modal Navigation
+  function handleModalNav(code) {
+    var totalCatalog = catalogKeys.length + PREF_ITEMS.length;
+    switch (code) {
+      case 38: // Up
+        if (modalRow === 1) {
+          modalRow = 0;
+          modalAppIndex = Math.min(modalAppIndex, totalCatalog - 1);
+        } else if (modalAppIndex >= 2) {
+          modalAppIndex -= 2;
+        }
+        renderModalAppList();
+        break;
+
+      case 40: // Down
+        if (modalRow === 0) {
+          if (modalAppIndex + 2 < totalCatalog) {
+            modalAppIndex += 2;
+          } else {
+            modalRow = 1;
+            modalBtnIndex = 0;
+          }
+        }
+        renderModalAppList();
+        break;
+
+      case 37: // Left
+        if (modalRow === 0) {
+          if (modalAppIndex % 2 === 1) modalAppIndex--;
+        } else {
+          modalBtnIndex = 0;
+        }
+        renderModalAppList();
+        break;
+
+      case 39: // Right
+        if (modalRow === 0) {
+          if (modalAppIndex % 2 === 0 && modalAppIndex + 1 < totalCatalog) modalAppIndex++;
+        } else {
+          modalBtnIndex = 1;
+        }
+        renderModalAppList();
+        break;
+
+      case 13: // OK / Enter
+        if (modalRow === 0) {
+          toggleModalItem(modalAppIndex);
+        } else {
+          if (modalBtnIndex === 0) saveShelfEditor();
+          else closeShelfEditor();
+        }
+        break;
+
+      case 27: // Esc / Back
+      case 10009:
+        closeShelfEditor();
+        break;
+    }
+  }
+
+  function fitViewport() {
+    var s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+    document.documentElement.style.setProperty("--ui-scale", s >= 1 ? 1 : s);
+    if (s >= 1) { viewport.style.cssText = ""; return; }
+    viewport.style.width = "1920px";
+    viewport.style.height = "1080px";
+    viewport.style.transformOrigin = "0 0";
+    viewport.style.transform = "scale(" + s + ")";
+  }
+  window.addEventListener("resize", fitViewport);
+  fitViewport();
+
+  mode = prefs.last.mode || 1;
+  dialIndex = prefs.last.dial || 0;
+  gridRow = 1;
+  gridCol = mode === 1 ? 0 : (mode === 2 ? 1 : 3);
+  if (prefs.start === 2) mode = 1;
+  if (prefs.start === 3) mode = 2;
+  exitScreensaver();
+  renderUI();
+  if (prefs.start > 0) setTimeout(playAudio, 800);
+})();
+</script>
+</body>
+</html>
